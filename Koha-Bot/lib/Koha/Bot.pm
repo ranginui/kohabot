@@ -3,7 +3,8 @@ package Koha::Bot;
 use 5.008008;
 use strict;
 use warnings;
-
+use Net::OSCAR qw(:standard);
+  
 require Exporter;
 use AutoLoader qw(AUTOLOAD);
 
@@ -22,12 +23,29 @@ our %EXPORT_TAGS = ( 'all' => [ qw(
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
-our @EXPORT = qw(
+our @EXPORT = qw( run_bot
 	
 );
 
 our $VERSION = '0.01';
 
+
+sub run_bot {
+    my ($screenname,$password) = @_;
+    my $bot = Net::OSCAR->new();
+    $bot->set_callback_im_in(\&_im_in);
+    $bot->signon($screenname, $password);
+    while(1) {
+	$oscar->do_one_loop();
+	# Do stuff
+    }
+}
+
+sub _im_in {
+     my($oscar, $sender, $message, $is_away) = @_;
+    print "[AWAY] " if $is_away;
+    print "$sender: $message\n";
+}
 
 # Preloaded methods go here.
 
