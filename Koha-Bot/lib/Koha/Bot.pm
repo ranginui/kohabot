@@ -4,7 +4,12 @@ use 5.008008;
 use strict;
 use warnings;
 use Net::OSCAR qw(:standard);
-  
+
+use lib '/usr/local/koha/intranet/modules';
+use C4::Context;
+use C4::SearchMarc;
+use C4::Biblio;
+
 require Exporter;
 use AutoLoader qw(AUTOLOAD);
 
@@ -34,22 +39,64 @@ sub run_bot {
     my ($screenname,$password) = @_;
     my $bot = Net::OSCAR->new();
     $bot->set_callback_im_in(\&_im_in);
+    $bot->set_callback_signon_done(\&_signon);
+    $bot->set_callback_error(\&_got_error);
     $bot->signon($screenname, $password);
+    print "Signed on\n";
     while(1) {
 	$bot->do_one_loop();
 	# Do stuff
     }
 }
 
+sub _got_error {
+    my ($oscar,$connection,$error,$description,$fatal)=@_;
+    print "cant connect $connection, $error, $description $fatal\n";
+    }
+
+sub _signon {
+    print "All signed in\n";
+    }
+
 sub _im_in {
      my($oscar, $sender, $message, $is_away) = @_;
     print "[AWAY] " if $is_away;
+    $message =~ s/<(([^ >]|\n)*)>//g;
     if ($message =~ /issued items/i){
 	$oscar->send_im ($sender, "heres stuff");
 	my $info = $oscar->get_info($sender);
 	print "$info\n";
     }
-#    print "$sender: $message\n";
+    elsif ($message =~ /search title (.*)/i){
+	my ($results,$total)=title_search($1,1);
+	if ($total > 0){
+	    foreach my $result (@$results){
+		$oscar->send_im ($sender, $result->{'title'});
+	    }
+	}
+	else {
+	    $oscar->send_im($sender,"Nothing found for $1");
+	    }
+    }
+}
+
+sub title_search {
+    my ($title,$startfrom)=@_;
+    my $dbh = C4::Context->dbh();
+    my ($tag,$subfield) = MARCfind_marc_from_kohafield($dbh,'biblio.title','');
+    my @tags;
+    my @value;
+    push @value,$title;
+    my $desc_or_asc='ASC';
+    my $resultsperpage=5;
+    my @and_or;
+    my @excluding;
+    my @operator='contains';
+    my $orderby='biblio.title';
+    my ($results,$total) = catalogsearch($dbh, \@tags,\@and_or,
+		            \@excluding, \@operator, \@value,
+		            $startfrom*$resultsperpage, $resultsperpage,$orderby,$desc_or_asc);
+    return ($results,$total);
 }
 
 # Preloaded methods go here.
