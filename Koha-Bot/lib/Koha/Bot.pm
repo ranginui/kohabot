@@ -68,15 +68,28 @@ sub _im_in {
 	print "$info\n";
     }
     elsif ($message =~ /search title (.*)/i){
-	my ($results,$total)=title_search($1,1);
+	my ($results,$total)=title_search($1,0);
 	if ($total > 0){
-	    foreach my $result (@$results){
-		$oscar->send_im ($sender, $result->{'title'});
+	    $oscar->send_im ($sender, "$total results found");
+    	    foreach my $result (@$results){
+		$oscar->send_im ($sender, "<a href=\"http://opac/cgi-bin/koha/opac-detail.pl?bib=$result->{'biblionumber'}\">$result->{'title'} $result->{'subititle'} by $result->{'author'}</a>");
 	    }
 	}
 	else {
 	    $oscar->send_im($sender,"Nothing found for $1");
 	    }
+    }
+    elsif ($message =~ /search author (.*)/i){	
+	my ($results,$total)=author_search($1,0);
+		if ($total > 0){
+	    $oscar->send_im ($sender, "$total results found");
+    	    foreach my $result (@$results){
+		$oscar->send_im ($sender, "<a href=\"http://opac/cgi-bin/koha/opac-detail.pl?bib=$result->{'biblionumber'}\">$result->{'title'} $result->{'subititle'} by $result->{'author'}</a>");
+	    }
+	}
+	else {
+	    $oscar->send_im($sender,"Nothing found for $1");
+	}    
     }
 }
 
@@ -98,6 +111,27 @@ sub title_search {
 		            $startfrom*$resultsperpage, $resultsperpage,$orderby,$desc_or_asc);
     return ($results,$total);
 }
+
+sub author_search {
+    my ($author,$startfrom)=@_;
+    my $dbh = C4::Context->dbh();
+    my ($tag,$subfield) = MARCfind_marc_from_kohafield($dbh,'biblio.author','');
+    my @tags;
+    my @value;
+    push @value,$author;
+    my $desc_or_asc='ASC';
+    my $resultsperpage=5;
+    my @and_or;
+    my @excluding;
+    my @operator='contains';
+    my $orderby='biblio.author';
+    my ($results,$total) = catalogsearch($dbh, \@tags,\@and_or,
+		            \@excluding, \@operator, \@value,
+		            $startfrom*$resultsperpage, $resultsperpage,$orderby,$desc_or_asc);
+    return ($results,$total);
+}
+
+
 
 # Preloaded methods go here.
 
