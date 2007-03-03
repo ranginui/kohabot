@@ -36,7 +36,7 @@ sub run_bot {
     $bot->set_callback_im_in(\&_im_in);
     $bot->signon($screenname, $password);
     while(1) {
-	$oscar->do_one_loop();
+	$bot->do_one_loop();
 	# Do stuff
     }
 }
@@ -44,7 +44,12 @@ sub run_bot {
 sub _im_in {
      my($oscar, $sender, $message, $is_away) = @_;
     print "[AWAY] " if $is_away;
-    print "$sender: $message\n";
+    if ($message =~ /issued items/i){
+	$oscar->send_im ($sender, "heres stuff");
+	my $info = $oscar->get_info($sender);
+	print "$info\n";
+    }
+#    print "$sender: $message\n";
 }
 
 # Preloaded methods go here.
