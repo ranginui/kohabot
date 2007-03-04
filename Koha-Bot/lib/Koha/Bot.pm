@@ -9,6 +9,7 @@ use lib '/usr/local/koha/intranet/modules';
 use C4::Context;
 use C4::SearchMarc;
 use C4::Biblio;
+use C4::Auth;
 
 require Exporter;
 use AutoLoader qw(AUTOLOAD);
@@ -22,116 +23,170 @@ our @ISA = qw(Exporter);
 # This allows declaration	use Koha::Bot ':all';
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
-our %EXPORT_TAGS = ( 'all' => [ qw(
-	
-) ] );
+our %EXPORT_TAGS = (
+    'all' => [
+        qw(
+
+          )
+    ]
+);
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
 our @EXPORT = qw( run_bot
-	
+
 );
 
 our $VERSION = '0.01';
 
+our $opac_url = "http://opac";
+our %users;
 
 sub run_bot {
-    my ($screenname,$password) = @_;
+    my ( $screenname, $password ) = @_;
     my $bot = Net::OSCAR->new();
-    $bot->set_callback_im_in(\&_im_in);
-    $bot->set_callback_signon_done(\&_signon);
-    $bot->set_callback_error(\&_got_error);
-    $bot->signon($screenname, $password);
+    $bot->set_callback_im_in( \&_im_in );
+    $bot->set_callback_signon_done( \&_signon );
+    $bot->set_callback_error( \&_got_error );
+    $bot->signon( $screenname, $password );
     print "Signed on\n";
-    while(1) {
-	$bot->do_one_loop();
-	# Do stuff
+    while (1) {
+        $bot->do_one_loop();
+
+        # Do stuff
     }
 }
 
 sub _got_error {
-    my ($oscar,$connection,$error,$description,$fatal)=@_;
+    my ( $oscar, $connection, $error, $description, $fatal ) = @_;
     print "cant connect $connection, $error, $description $fatal\n";
-    }
+}
 
 sub _signon {
     print "All signed in\n";
-    }
-
-sub _im_in {
-     my($oscar, $sender, $message, $is_away) = @_;
-    print "[AWAY] " if $is_away;
-    $message =~ s/<(([^ >]|\n)*)>//g;
-    if ($message =~ /issued items/i){
-	$oscar->send_im ($sender, "heres stuff");
-	my $info = $oscar->get_info($sender);
-	print "$info\n";
-    }
-    elsif ($message =~ /search title (.*)/i){
-	my ($results,$total)=title_search($1,0);
-	if ($total > 0){
-	    $oscar->send_im ($sender, "$total results found");
-    	    foreach my $result (@$results){
-		$oscar->send_im ($sender, "<a href=\"http://opac/cgi-bin/koha/opac-detail.pl?bib=$result->{'biblionumber'}\">$result->{'title'} $result->{'subititle'} by $result->{'author'}</a>");
-	    }
-	}
-	else {
-	    $oscar->send_im($sender,"Nothing found for $1");
-	    }
-    }
-    elsif ($message =~ /search author (.*)/i){	
-	my ($results,$total)=author_search($1,0);
-		if ($total > 0){
-	    $oscar->send_im ($sender, "$total results found");
-    	    foreach my $result (@$results){
-		$oscar->send_im ($sender, "<a href=\"http://opac/cgi-bin/koha/opac-detail.pl?bib=$result->{'biblionumber'}\">$result->{'title'} $result->{'subititle'} by $result->{'author'}</a>");
-	    }
-	}
-	else {
-	    $oscar->send_im($sender,"Nothing found for $1");
-	}    
-    }
 }
 
+sub _im_in {
+    my ( $oscar, $sender, $message, $is_away ) = @_;
+    print "[AWAY] " if $is_away;
+    $message =~ s/<(([^ >]|\n)*)>//g;
+    if ( $message =~ /issued items/i ) {
+	# user is try to check items on issue to them
+	if ($users{$sender}){
+	    # if the have authenticated, give them the info
+	    my @issued_items = issued_items($users{$sender});
+	    foreach my $item (@issued_items){
+		$oscar->send_im( $sender, "heres stuff" );
+	    }
+	}
+	else {
+	    # tell them they have to login
+	    $oscar->send_im( $sender, "I'm sorry you need to login first, syntax is login cardnumber:password" );
+	}
+    }
+    elsif ( $message =~ /search title (.*)/i ) {
+        my ( $results, $total ) = title_search( $1, 0 );
+        if ( $total > 0 ) {
+            $oscar->send_im( $sender, "$total results found" );
+            foreach my $result (@$results) {
+                $oscar->send_im( $sender,
+"<a href=\"$opac_url/cgi-bin/koha/opac-detail.pl?bib=$result->{'biblionumber'}\">$result->{'title'} $result->{'subititle'} by $result->{'author'}</a>"
+                );
+            }
+        }
+        else {
+            $oscar->send_im( $sender, "Nothing found for $1" );
+        }
+    }
+    elsif ( $message =~ /search author (.*)/i ) {
+        my ( $results, $total ) = author_search( $1, 0 );
+        if ( $total > 0 ) {
+            $oscar->send_im( $sender, "$total results found" );
+            foreach my $result (@$results) {
+                $oscar->send_im( $sender,
+"<a href=\"$opac_url/cgi-bin/koha/opac-detail.pl?bib=$result->{'biblionumber'}\">$result->{'title'} $result->{'subititle'} by $result->{'author'}</a>"
+                );
+            }
+        }
+        else {
+            $oscar->send_im( $sender, "Nothing found for $1" );
+        }
+    }
+    elsif ( $message =~ /login (.*)\:(.*)/ ) {
+        my $result = login( $1, $2 );
+        if ($result) {
+            if ( $result == 2 ) {
+                $oscar->send_im( $sender,
+                    "Welcome $1, you now have superuser privs" );
+            }
+            else {
+                $oscar->send_im( $sender, "Welcome $1, you are now logged in" );
+            }
+            $users{$sender} = $1;
+        }
+        else {
+            $oscar->send_im( $sender,
+                "Im sorry you entered in an invalid cardnumber or password" );
+        }
+    }
+
+}
+
+## these 2 subroutines could be factored
+
 sub title_search {
-    my ($title,$startfrom)=@_;
+    my ( $title, $startfrom ) = @_;
     my $dbh = C4::Context->dbh();
-    my ($tag,$subfield) = MARCfind_marc_from_kohafield($dbh,'biblio.title','');
+    my ( $tag, $subfield ) =
+      MARCfind_marc_from_kohafield( $dbh, 'biblio.title', '' );
     my @tags;
     my @value;
-    push @value,$title;
-    my $desc_or_asc='ASC';
-    my $resultsperpage=5;
+    push @value, $title;
+    my $desc_or_asc    = 'ASC';
+    my $resultsperpage = 5;
     my @and_or;
     my @excluding;
-    my @operator='contains';
-    my $orderby='biblio.title';
-    my ($results,$total) = catalogsearch($dbh, \@tags,\@and_or,
-		            \@excluding, \@operator, \@value,
-		            $startfrom*$resultsperpage, $resultsperpage,$orderby,$desc_or_asc);
-    return ($results,$total);
+    my @operator = 'contains';
+    my $orderby  = 'biblio.title';
+    my ( $results, $total ) =
+      catalogsearch( $dbh, \@tags, \@and_or, \@excluding, \@operator, \@value,
+        $startfrom * $resultsperpage,
+        $resultsperpage, $orderby, $desc_or_asc );
+    return ( $results, $total );
 }
 
 sub author_search {
-    my ($author,$startfrom)=@_;
+    my ( $author, $startfrom ) = @_;
     my $dbh = C4::Context->dbh();
-    my ($tag,$subfield) = MARCfind_marc_from_kohafield($dbh,'biblio.author','');
+    my ( $tag, $subfield ) =
+      MARCfind_marc_from_kohafield( $dbh, 'biblio.author', '' );
     my @tags;
     my @value;
-    push @value,$author;
-    my $desc_or_asc='ASC';
-    my $resultsperpage=5;
+    push @value, $author;
+    my $desc_or_asc    = 'ASC';
+    my $resultsperpage = 5;
     my @and_or;
     my @excluding;
-    my @operator='contains';
-    my $orderby='biblio.author';
-    my ($results,$total) = catalogsearch($dbh, \@tags,\@and_or,
-		            \@excluding, \@operator, \@value,
-		            $startfrom*$resultsperpage, $resultsperpage,$orderby,$desc_or_asc);
-    return ($results,$total);
+    my @operator = 'contains';
+    my $orderby  = 'biblio.author';
+    my ( $results, $total ) =
+      catalogsearch( $dbh, \@tags, \@and_or, \@excluding, \@operator, \@value,
+        $startfrom * $resultsperpage,
+        $resultsperpage, $orderby, $desc_or_asc );
+    return ( $results, $total );
 }
 
+sub login {
+    my ( $username, $password ) = @_;
+    my $dbh = C4::Context->dbh;
+    my $checked = C4::Auth::checkpw( $dbh, $username, $password );
+    return $checked;
+}
 
+sub issued_items {
+    my ($username)=@_;
+    
+}
 
 # Preloaded methods go here.
 
@@ -139,6 +194,7 @@ sub author_search {
 
 1;
 __END__
+
 # Below is stub documentation for your module. You'd better edit it!
 
 =head1 NAME
