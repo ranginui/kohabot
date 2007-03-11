@@ -10,6 +10,7 @@ use C4::Context;
 use C4::SearchMarc;
 use C4::Biblio;
 use C4::Auth;
+use C4::Circulation::Circ2;
 
 require Exporter;
 use AutoLoader qw(AUTOLOAD);
@@ -76,7 +77,7 @@ sub _im_in {
 	    # if the have authenticated, give them the info
 	    my @issued_items = issued_items($users{$sender});
 	    foreach my $item (@issued_items){
-		$oscar->send_im( $sender, "heres stuff" );
+		$oscar->send_im( $sender, $item->{'title'} );
 	    }
 	}
 	else {
@@ -115,6 +116,8 @@ sub _im_in {
     elsif ( $message =~ /login (.*)\:(.*)/ ) {
         my $result = login( $1, $2 );
         if ($result) {
+	    $users{$sender} = $1;
+	    my $borrower = get_borrower($1);
             if ( $result == 2 ) {
                 $oscar->send_im( $sender,
                     "Welcome $1, you now have superuser privs" );
@@ -122,7 +125,7 @@ sub _im_in {
             else {
                 $oscar->send_im( $sender, "Welcome $1, you are now logged in" );
             }
-            $users{$sender} = $1;
+
         }
         else {
             $oscar->send_im( $sender,
@@ -183,9 +186,46 @@ sub login {
     return $checked;
 }
 
+sub get_borrower {
+    my ($username)=@_;
+    my $env;
+    my $borrower = getpatroninformation($env, '',$username);
+    return($borrower);
+}
+
 sub issued_items {
     my ($username)=@_;
-    
+    my $borrower = get_borrower($username);
+#    my $issues = getissues($borrower->{'borrowernumber'});
+    # the getissues routine in Koha is currently retarded
+    # so im doing it here, until I get round to fixing circulation
+     my $select = "SELECT items.*,issues.timestamp      AS timestamp,
+                                  issues.date_due       AS date_due,
+                                  items.barcode         AS barcode,
+                                  biblio.title          AS title,
+                                  biblio.author         AS author,
+                                  biblioitems.dewey     AS dewey,
+                                  itemtypes.description AS itemtype,
+                                  biblioitems.subclass  AS subclass,
+                                  biblioitems.classification AS classification
+                          FROM issues,items,biblioitems,biblio, itemtypes
+                          WHERE issues.borrowernumber  = ?
+                          AND issues.itemnumber      = items.itemnumber
+                          AND items.biblionumber     = biblio.biblionumber
+                          AND items.biblioitemnumber = biblioitems.biblioitemnumber
+                          AND itemtypes.itemtype     = biblioitems.itemtype
+                          AND issues.returndate      IS NULL
+                          ORDER BY issues.date_due";
+my $dbh=C4::Context->dbh();
+
+        my $sth=$dbh->prepare($select);
+my @items;
+while (my $data = $sth->fetchrow_hashref()){
+    push @items,$data;
+    }
+$sth->finish();
+return @items;
+        
 }
 
 # Preloaded methods go here.
