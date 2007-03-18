@@ -1,2 +1,3 @@
 This is a script and module for creating a bot for use on aim to
-interact with Koha
+interact with Koha.
+Currently it only supports the OSCAR protocol as used by AIM.

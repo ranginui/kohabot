@@ -1,5 +1,9 @@
 package Koha::Bot;
 
+# Copyright 2007 Chris Cormack
+# chris@bigballofwax.co.nz
+
+
 use 5.008008;
 use strict;
 use warnings;
@@ -41,8 +45,16 @@ our @EXPORT = qw( run_bot
 
 our $VERSION = '0.01';
 
+# defining the url of the opac here, should be fetch from a config file
+# somewhere
 our $opac_url = "http://opac";
+
+# we use this hash to match authenticated users with the IM names
 our %users;
+
+# this sub routine sets up the bot and runs it
+# Think of it as an event loop, it doesnt do anything until it needs to service
+# an interrupt
 
 sub run_bot {
     my ( $screenname, $password ) = @_;
@@ -51,42 +63,48 @@ sub run_bot {
     $bot->set_callback_signon_done( \&_signon );
     $bot->set_callback_error( \&_got_error );
     $bot->signon( $screenname, $password );
-    print "Signed on\n";
     while (1) {
         $bot->do_one_loop();
-
-        # Do stuff
     }
 }
 
+# error handler if the bot can't connect this is called
 sub _got_error {
     my ( $oscar, $connection, $error, $description, $fatal ) = @_;
     print "cant connect $connection, $error, $description $fatal\n";
 }
 
+
+# called if the bot connects succesfully 
 sub _signon {
     print "All signed in\n";
 }
 
+# this is called if the bot receives an instant message
+# it then parses the messsage and reacts
 sub _im_in {
     my ( $oscar, $sender, $message, $is_away ) = @_;
     print "[AWAY] " if $is_away;
     $message =~ s/<(([^ >]|\n)*)>//g;
     if ( $message =~ /issued items/i ) {
-	# user is try to check items on issue to them
-	if ($users{$sender}){
-	    # if the have authenticated, give them the info
-	    my @issued_items = issued_items($users{$sender});
-	    foreach my $item (@issued_items){
-		$oscar->send_im( $sender, $item->{'title'} );
-	    }
-	}
-	else {
-	    # tell them they have to login
-	    $oscar->send_im( $sender, "I'm sorry you need to login first, syntax is login cardnumber:password" );
-	}
+        # user is try to check items on issue to them
+        if ( $users{$sender} ) {
+            # if the have authenticated, give them the info
+            my @issued_items = issued_items( $users{$sender} );
+            foreach my $item (@issued_items) {
+                $oscar->send_im( $sender, "$item->{'title'} / $item->{'author'} : $item->{'date_due'}" );
+            }
+        }
+        else {
+
+            # tell them they have to login
+            $oscar->send_im( $sender,
+"I'm sorry you need to login first, syntax is login cardnumber:password"
+            );
+        }
     }
     elsif ( $message =~ /search title (.*)/i ) {
+	# user is doing a search of the catalogue using title
         my ( $results, $total ) = title_search( $1, 0 );
         if ( $total > 0 ) {
             $oscar->send_im( $sender, "$total results found" );
@@ -101,6 +119,7 @@ sub _im_in {
         }
     }
     elsif ( $message =~ /search author (.*)/i ) {
+	# searching by author
         my ( $results, $total ) = author_search( $1, 0 );
         if ( $total > 0 ) {
             $oscar->send_im( $sender, "$total results found" );
@@ -115,16 +134,25 @@ sub _im_in {
         }
     }
     elsif ( $message =~ /login (.*)\:(.*)/ ) {
+	# user authenticating
+	# login username:password
         my $result = login( $1, $2 );
         if ($result) {
-	    $users{$sender} = $1;
-	    my $borrower = get_borrower($1);
+	    # if they successfully logged in $result will be 1 for normal user
+	    # 2 if they logged in with the superuser login and password
+	    
+	    # add them to the hash
+            $users{$sender} = $1;
+	    # get borrower information
+            my $borrower = get_borrower($1);
             if ( $result == 2 ) {
+		# if they are superuser 
+		# we will have to do something more here
                 $oscar->send_im( $sender,
                     "Welcome $1, you now have superuser privs" );
             }
             else {
-                $oscar->send_im( $sender, "Welcome $1, you are now logged in" );
+                $oscar->send_im( $sender, "Welcome $borrower->{'firstname'}, you are now logged in" );
             }
 
         }
@@ -137,6 +165,7 @@ sub _im_in {
 }
 
 ## these 2 subroutines could be refactored into one
+# title_search and author_search just search the catalog by either title or author
 
 sub title_search {
     my ( $title, $startfrom ) = @_;
@@ -180,6 +209,8 @@ sub author_search {
     return ( $results, $total );
 }
 
+
+# Checks the usernamae and password against the database
 sub login {
     my ( $username, $password ) = @_;
     my $dbh = C4::Context->dbh;
@@ -188,19 +219,20 @@ sub login {
 }
 
 sub get_borrower {
-    my ($username)=@_;
+    my ($username) = @_;
     my $env;
-    my $borrower = getpatroninformation($env, '',$username);
-    return($borrower);
+    my $borrower = getpatroninformation( $env, '', $username );
+    return ($borrower);
 }
 
 sub issued_items {
-    my ($username)=@_;
+    my ($username) = @_;
     my $borrower = get_borrower($username);
-#    my $issues = getissues($borrower->{'borrowernumber'});
+
+    #    my $issues = getissues($borrower->{'borrowernumber'});
     # the getissues routine in Koha is currently retarded
     # so im doing it here, until I get round to fixing circulation
-     my $select = "SELECT items.*,issues.timestamp      AS timestamp,
+    my $select = "SELECT items.*,issues.timestamp      AS timestamp,
                                   issues.date_due       AS date_due,
                                   items.barcode         AS barcode,
                                   biblio.title          AS title,
@@ -217,16 +249,17 @@ sub issued_items {
                           AND itemtypes.itemtype     = biblioitems.itemtype
                           AND issues.returndate      IS NULL
                           ORDER BY issues.date_due";
-my $dbh=C4::Context->dbh();
+    my $dbh = C4::Context->dbh();
 
-        my $sth=$dbh->prepare($select);
-my @items;
-while (my $data = $sth->fetchrow_hashref()){
-    push @items,$data;
+    my $sth = $dbh->prepare($select);
+    $sth->execute($borrower->{'borrowernumber'});
+    my @items;
+    while ( my $data = $sth->fetchrow_hashref() ) {
+        push @items, $data;
     }
-$sth->finish();
-return @items;
-        
+    $sth->finish();
+    return @items;
+
 }
 
 # Preloaded methods go here.
@@ -240,41 +273,40 @@ __END__
 
 =head1 NAME
 
-Koha::Bot - Perl extension for blah blah blah
+Koha::Bot - Perl extension for Creating a Bot for use on IM networks
 
 =head1 SYNOPSIS
 
   use Koha::Bot;
-  blah blah blah
+  
+  my $screenname='kohabot';
+  my $password='wootwoot';
+
+  run_bot($screenname,$password);
 
 =head1 DESCRIPTION
 
-Stub documentation for Koha::Bot, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
+This module can be used to create a IM bot that talks to Koha. Currently it just works
+with AIM. 
 
-Blah blah blah.
+Currently it can search a catalogue. The user can authenticate and get a list
+of books issued to themselves
 
 =head2 EXPORT
 
-None by default.
+run_bot()
 
 
 
 =head1 SEE ALSO
 
-Mention other useful documentation such as the documentation of
-related modules or operating system documentation (such as man pages
-in UNIX), or any relevant external documentation such as RFCs or
-standards.
+koha@lists.katipo.co.nz
 
-If you have a mailing list set up for your module, mention it here.
-
-If you have a web site set up for your module, mention it here.
+www.koha.org
 
 =head1 AUTHOR
 
-Chris Cormack, E<lt>chris@E<gt>
+Chris Cormack, E<lt>chris@bigballofwax.co.nzE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
