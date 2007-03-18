@@ -1,4 +1,4 @@
-package Koha::Bot;
+package Koha::Bot::Aim;
 
 # Copyright 2007 Chris Cormack
 # chris@bigballofwax.co.nz
@@ -7,6 +7,8 @@ use 5.008008;
 use strict;
 use warnings;
 use Net::OSCAR qw(:standard);
+use Koha::Bot;
+
 
 # set this to the path to your Koha moudules
 use lib '/usr/local/koha/intranet/modules';
@@ -42,11 +44,10 @@ our @EXPORT = qw( run_bot
 
 );
 
-our $VERSION = '0.02';
+our $VERSION = '0.01';
 
 # defining the url of the opac here, should be fetch from a config file
 # somewhere
-our $opac_url = "http://opac";
 
 # we use this hash to match authenticated users with the IM names
 our %users;
@@ -163,89 +164,6 @@ sub _im_in {
 
 }
 
-## these 2 subroutines could be refactored into one
-# title_search and author_search just search the catalog by either title or author
-
-# module to search the catalogue
-
-sub search_catalogue {
-    my ( $type, $term ) = @_;
-    my $dbh = C4::Context->dbh();
-    if ($type eq 'title'){
-	$type = 'biblio.title';
-    }
-    elsif ($type eq 'author'){
-	$type = 'biblio.author';
-    }
-    my ( $tag, $subfield ) =
-      MARCfind_marc_from_kohafield( $dbh, $type, '' );    
-    my @tags;
-    my @value;
-    push @value, $term;
-    my $desc_or_asc    = 'ASC';
-    my $resultsperpage = 5;
-    my @and_or;
-    my @excluding;
-    my $operator = 'contains';
-    my $orderby = $type;
-    my ( $results, $total ) =
-      catalogsearch( $dbh, \@tags, \@and_or, \@excluding, \@operator, \@value,
-        $startfrom * $resultsperpage,
-        $resultsperpage, $orderby, $desc_or_asc );
-    return ( $results, $total );
-}
-
-# Checks the usernamae and password against the database
-sub login {
-    my ( $username, $password ) = @_;
-    my $dbh = C4::Context->dbh;
-    my $checked = C4::Auth::checkpw( $dbh, $username, $password );
-    return $checked;
-}
-
-sub get_borrower {
-    my ($username) = @_;
-    my $env;
-    my $borrower = getpatroninformation( $env, '', $username );
-    return ($borrower);
-}
-
-sub issued_items {
-    my ($username) = @_;
-    my $borrower = get_borrower($username);
-
-    #    my $issues = getissues($borrower->{'borrowernumber'});
-    # the getissues routine in Koha is currently retarded
-    # so im doing it here, until I get round to fixing circulation
-    my $select = "SELECT items.*,issues.timestamp      AS timestamp,
-                                  issues.date_due       AS date_due,
-                                  items.barcode         AS barcode,
-                                  biblio.title          AS title,
-                                  biblio.author         AS author,
-                                  biblioitems.dewey     AS dewey,
-                                  itemtypes.description AS itemtype,
-                                  biblioitems.subclass  AS subclass,
-                                  biblioitems.classification AS classification
-                          FROM issues,items,biblioitems,biblio, itemtypes
-                          WHERE issues.borrowernumber  = ?
-                          AND issues.itemnumber      = items.itemnumber
-                          AND items.biblionumber     = biblio.biblionumber
-                          AND items.biblioitemnumber = biblioitems.biblioitemnumber
-                          AND itemtypes.itemtype     = biblioitems.itemtype
-                          AND issues.returndate      IS NULL
-                          ORDER BY issues.date_due";
-    my $dbh = C4::Context->dbh();
-
-    my $sth = $dbh->prepare($select);
-    $sth->execute($borrower->{'borrowernumber'});
-    my @items;
-    while ( my $data = $sth->fetchrow_hashref() ) {
-        push @items, $data;
-    }
-    $sth->finish();
-    return @items;
-
-}
 
 # Preloaded methods go here.
 
