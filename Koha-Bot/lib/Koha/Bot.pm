@@ -167,48 +167,34 @@ sub _im_in {
 ## these 2 subroutines could be refactored into one
 # title_search and author_search just search the catalog by either title or author
 
-sub title_search {
-    my ( $title, $startfrom ) = @_;
+# module to search the catalogue
+
+sub search_catalogue {
+    my ( $type, $term ) = @_;
     my $dbh = C4::Context->dbh();
+    if ($type eq 'title'){
+	$type = 'biblio.title';
+    }
+    elsif ($type eq 'author'){
+	$type = 'biblio.author';
+    }
     my ( $tag, $subfield ) =
-      MARCfind_marc_from_kohafield( $dbh, 'biblio.title', '' );
+      MARCfind_marc_from_kohafield( $dbh, $type, '' );    
     my @tags;
     my @value;
-    push @value, $title;
+    push @value, $term;
     my $desc_or_asc    = 'ASC';
     my $resultsperpage = 5;
     my @and_or;
     my @excluding;
-    my @operator = 'contains';
-    my $orderby  = 'biblio.title';
+    my $operator = 'contains';
+    my $orderby = $type;
     my ( $results, $total ) =
       catalogsearch( $dbh, \@tags, \@and_or, \@excluding, \@operator, \@value,
         $startfrom * $resultsperpage,
         $resultsperpage, $orderby, $desc_or_asc );
     return ( $results, $total );
 }
-
-sub author_search {
-    my ( $author, $startfrom ) = @_;
-    my $dbh = C4::Context->dbh();
-    my ( $tag, $subfield ) =
-      MARCfind_marc_from_kohafield( $dbh, 'biblio.author', '' );
-    my @tags;
-    my @value;
-    push @value, $author;
-    my $desc_or_asc    = 'ASC';
-    my $resultsperpage = 5;
-    my @and_or;
-    my @excluding;
-    my @operator = 'contains';
-    my $orderby  = 'biblio.author';
-    my ( $results, $total ) =
-      catalogsearch( $dbh, \@tags, \@and_or, \@excluding, \@operator, \@value,
-        $startfrom * $resultsperpage,
-        $resultsperpage, $orderby, $desc_or_asc );
-    return ( $results, $total );
-}
-
 
 # Checks the usernamae and password against the database
 sub login {
