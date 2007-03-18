@@ -43,7 +43,7 @@ our @EXPORT = qw( run_bot
 
 );
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 # defining the url of the opac here, should be fetch from a config file
 # somewhere
