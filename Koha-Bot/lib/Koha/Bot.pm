@@ -5,6 +5,7 @@ use strict;
 use warnings;
 use Net::OSCAR qw(:standard);
 
+# set this to the path to your Koha moudules
 use lib '/usr/local/koha/intranet/modules';
 use C4::Context;
 use C4::SearchMarc;
@@ -135,7 +136,7 @@ sub _im_in {
 
 }
 
-## these 2 subroutines could be factored
+## these 2 subroutines could be refactored into one
 
 sub title_search {
     my ( $title, $startfrom ) = @_;
