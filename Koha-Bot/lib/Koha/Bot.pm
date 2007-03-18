@@ -142,11 +142,6 @@ Koha::Bot - Perl extension for Creating a Bot for use on IM networks
 
   use Koha::Bot;
   
-  my $screenname='kohabot';
-  my $password='wootwoot';
-
-  run_bot($screenname,$password);
-
 =head1 DESCRIPTION
 
 This module can be used to create a IM bot that talks to Koha. Currently it just works
@@ -157,7 +152,7 @@ of books issued to themselves
 
 =head2 EXPORT
 
-run_bot()
+search_catalogue
 
 
 
