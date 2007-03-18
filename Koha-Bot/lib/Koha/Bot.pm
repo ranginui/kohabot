@@ -6,7 +6,6 @@ package Koha::Bot;
 use 5.008008;
 use strict;
 use warnings;
-use Net::OSCAR qw(:standard);
 
 # set this to the path to your Koha moudules
 use lib '/usr/local/koha/intranet/modules';
@@ -38,133 +37,12 @@ our %EXPORT_TAGS = (
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
-our @EXPORT = qw( run_bot
+our @EXPORT = qw( search_catalogue login get_borrower issued_items
 
 );
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
-# defining the url of the opac here, should be fetch from a config file
-# somewhere
-our $opac_url = "http://opac";
-
-# we use this hash to match authenticated users with the IM names
-our %users;
-
-# this sub routine sets up the bot and runs it
-# Think of it as an event loop, it doesnt do anything until it needs to service
-# an interrupt
-
-sub run_bot {
-    my ( $screenname, $password ) = @_;
-    my $bot = Net::OSCAR->new();
-    $bot->set_callback_im_in( \&_im_in );
-    $bot->set_callback_signon_done( \&_signon );
-    $bot->set_callback_error( \&_got_error );
-    $bot->signon( $screenname, $password );
-    while (1) {
-        $bot->do_one_loop();
-    }
-}
-
-# error handler if the bot can't connect this is called
-sub _got_error {
-    my ( $oscar, $connection, $error, $description, $fatal ) = @_;
-    print "cant connect $connection, $error, $description $fatal\n";
-}
-
-
-# called if the bot connects succesfully 
-sub _signon {
-    print "All signed in\n";
-}
-
-# this is called if the bot receives an instant message
-# it then parses the messsage and reacts
-sub _im_in {
-    my ( $oscar, $sender, $message, $is_away ) = @_;
-    print "[AWAY] " if $is_away;
-    $message =~ s/<(([^ >]|\n)*)>//g;
-    if ( $message =~ /issued items/i ) {
-        # user is try to check items on issue to them
-        if ( $users{$sender} ) {
-            # if the have authenticated, give them the info
-            my @issued_items = issued_items( $users{$sender} );
-            foreach my $item (@issued_items) {
-                $oscar->send_im( $sender, "$item->{'title'} / $item->{'author'} : $item->{'date_due'}" );
-            }
-        }
-        else {
-
-            # tell them they have to login
-            $oscar->send_im( $sender,
-"I'm sorry you need to login first, syntax is login cardnumber:password"
-            );
-        }
-    }
-    elsif ( $message =~ /search title (.*)/i ) {
-	# user is doing a search of the catalogue using title
-        my ( $results, $total ) = title_search( $1, 0 );
-        if ( $total > 0 ) {
-            $oscar->send_im( $sender, "$total results found" );
-            foreach my $result (@$results) {
-                $oscar->send_im( $sender,
-"<a href=\"$opac_url/cgi-bin/koha/opac-detail.pl?bib=$result->{'biblionumber'}\">$result->{'title'} $result->{'subititle'} by $result->{'author'}</a>"
-                );
-            }
-        }
-        else {
-            $oscar->send_im( $sender, "Nothing found for $1" );
-        }
-    }
-    elsif ( $message =~ /search author (.*)/i ) {
-	# searching by author
-        my ( $results, $total ) = author_search( $1, 0 );
-        if ( $total > 0 ) {
-            $oscar->send_im( $sender, "$total results found" );
-            foreach my $result (@$results) {
-                $oscar->send_im( $sender,
-"<a href=\"$opac_url/cgi-bin/koha/opac-detail.pl?bib=$result->{'biblionumber'}\">$result->{'title'} $result->{'subititle'} by $result->{'author'}</a>"
-                );
-            }
-        }
-        else {
-            $oscar->send_im( $sender, "Nothing found for $1" );
-        }
-    }
-    elsif ( $message =~ /login (.*)\:(.*)/ ) {
-	# user authenticating
-	# login username:password
-        my $result = login( $1, $2 );
-        if ($result) {
-	    # if they successfully logged in $result will be 1 for normal user
-	    # 2 if they logged in with the superuser login and password
-	    
-	    # add them to the hash
-            $users{$sender} = $1;
-	    # get borrower information
-            my $borrower = get_borrower($1);
-            if ( $result == 2 ) {
-		# if they are superuser 
-		# we will have to do something more here
-                $oscar->send_im( $sender,
-                    "Welcome $1, you now have superuser privs" );
-            }
-            else {
-                $oscar->send_im( $sender, "Welcome $borrower->{'firstname'}, you are now logged in" );
-            }
-
-        }
-        else {
-            $oscar->send_im( $sender,
-                "Im sorry you entered in an invalid cardnumber or password" );
-        }
-    }
-
-}
-
-## these 2 subroutines could be refactored into one
-# title_search and author_search just search the catalog by either title or author
 
 # module to search the catalogue
 
