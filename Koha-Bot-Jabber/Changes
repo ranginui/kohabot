@@ -1,6 +1,0 @@
-Revision history for Perl extension Koha::Bot::Jabber.
-
-0.01  Sun Mar 18 21:02:53 2007
-	- original version; created by h2xs 1.23 with options
-		-XAn Koha::Bot::Jabber
-
