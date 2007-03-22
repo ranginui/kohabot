@@ -1,10 +1,13 @@
 package Koha::Bot;
 
+# Copyright 2007 Chris Cormack
+# chris@bigballofwax.co.nz
+
 use 5.008008;
 use strict;
 use warnings;
-use Net::OSCAR qw(:standard);
 
+# set this to the path to your Koha moudules
 use lib '/usr/local/koha/intranet/modules';
 use C4::Context;
 use C4::SearchMarc;
@@ -34,123 +37,35 @@ our %EXPORT_TAGS = (
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
-our @EXPORT = qw( run_bot
+our @EXPORT = qw( search_catalogue login get_borrower issued_items
 
 );
 
-our $VERSION = '0.01';
+our $VERSION = '0.03';
 
-our $opac_url = "http://opac";
-our %users;
 
-sub run_bot {
-    my ( $screenname, $password ) = @_;
-    my $bot = Net::OSCAR->new();
-    $bot->set_callback_im_in( \&_im_in );
-    $bot->set_callback_signon_done( \&_signon );
-    $bot->set_callback_error( \&_got_error );
-    $bot->signon( $screenname, $password );
-    print "Signed on\n";
-    while (1) {
-        $bot->do_one_loop();
+# module to search the catalogue
 
-        # Do stuff
-    }
-}
-
-sub _got_error {
-    my ( $oscar, $connection, $error, $description, $fatal ) = @_;
-    print "cant connect $connection, $error, $description $fatal\n";
-}
-
-sub _signon {
-    print "All signed in\n";
-}
-
-sub _im_in {
-    my ( $oscar, $sender, $message, $is_away ) = @_;
-    print "[AWAY] " if $is_away;
-    $message =~ s/<(([^ >]|\n)*)>//g;
-    if ( $message =~ /issued items/i ) {
-	# user is try to check items on issue to them
-	if ($users{$sender}){
-	    # if the have authenticated, give them the info
-	    my @issued_items = issued_items($users{$sender});
-	    foreach my $item (@issued_items){
-		$oscar->send_im( $sender, $item->{'title'} );
-	    }
-	}
-	else {
-	    # tell them they have to login
-	    $oscar->send_im( $sender, "I'm sorry you need to login first, syntax is login cardnumber:password" );
-	}
-    }
-    elsif ( $message =~ /search title (.*)/i ) {
-        my ( $results, $total ) = title_search( $1, 0 );
-        if ( $total > 0 ) {
-            $oscar->send_im( $sender, "$total results found" );
-            foreach my $result (@$results) {
-                $oscar->send_im( $sender,
-"<a href=\"$opac_url/cgi-bin/koha/opac-detail.pl?bib=$result->{'biblionumber'}\">$result->{'title'} $result->{'subititle'} by $result->{'author'}</a>"
-                );
-            }
-        }
-        else {
-            $oscar->send_im( $sender, "Nothing found for $1" );
-        }
-    }
-    elsif ( $message =~ /search author (.*)/i ) {
-        my ( $results, $total ) = author_search( $1, 0 );
-        if ( $total > 0 ) {
-            $oscar->send_im( $sender, "$total results found" );
-            foreach my $result (@$results) {
-                $oscar->send_im( $sender,
-"<a href=\"$opac_url/cgi-bin/koha/opac-detail.pl?bib=$result->{'biblionumber'}\">$result->{'title'} $result->{'subititle'} by $result->{'author'}</a>"
-                );
-            }
-        }
-        else {
-            $oscar->send_im( $sender, "Nothing found for $1" );
-        }
-    }
-    elsif ( $message =~ /login (.*)\:(.*)/ ) {
-        my $result = login( $1, $2 );
-        if ($result) {
-	    $users{$sender} = $1;
-	    my $borrower = get_borrower($1);
-            if ( $result == 2 ) {
-                $oscar->send_im( $sender,
-                    "Welcome $1, you now have superuser privs" );
-            }
-            else {
-                $oscar->send_im( $sender, "Welcome $1, you are now logged in" );
-            }
-
-        }
-        else {
-            $oscar->send_im( $sender,
-                "Im sorry you entered in an invalid cardnumber or password" );
-        }
-    }
-
-}
-
-## these 2 subroutines could be factored
-
-sub title_search {
-    my ( $title, $startfrom ) = @_;
+sub search_catalogue {
+    my ( $type, $term ) = @_;
     my $dbh = C4::Context->dbh();
+    if ($type eq 'title'){
+	$type = 'biblio.title';
+    }
+    elsif ($type eq 'author'){
+	$type = 'biblio.author';
+    }
     my ( $tag, $subfield ) =
-      MARCfind_marc_from_kohafield( $dbh, 'biblio.title', '' );
+      MARCfind_marc_from_kohafield( $dbh, $type, '' );    
     my @tags;
     my @value;
-    push @value, $title;
+    push @value, $term;
     my $desc_or_asc    = 'ASC';
     my $resultsperpage = 5;
     my @and_or;
     my @excluding;
-    my @operator = 'contains';
-    my $orderby  = 'biblio.title';
+    my $operator = 'contains';
+    my $orderby = $type;
     my ( $results, $total ) =
       catalogsearch( $dbh, \@tags, \@and_or, \@excluding, \@operator, \@value,
         $startfrom * $resultsperpage,
@@ -158,27 +73,7 @@ sub title_search {
     return ( $results, $total );
 }
 
-sub author_search {
-    my ( $author, $startfrom ) = @_;
-    my $dbh = C4::Context->dbh();
-    my ( $tag, $subfield ) =
-      MARCfind_marc_from_kohafield( $dbh, 'biblio.author', '' );
-    my @tags;
-    my @value;
-    push @value, $author;
-    my $desc_or_asc    = 'ASC';
-    my $resultsperpage = 5;
-    my @and_or;
-    my @excluding;
-    my @operator = 'contains';
-    my $orderby  = 'biblio.author';
-    my ( $results, $total ) =
-      catalogsearch( $dbh, \@tags, \@and_or, \@excluding, \@operator, \@value,
-        $startfrom * $resultsperpage,
-        $resultsperpage, $orderby, $desc_or_asc );
-    return ( $results, $total );
-}
-
+# Checks the usernamae and password against the database
 sub login {
     my ( $username, $password ) = @_;
     my $dbh = C4::Context->dbh;
@@ -187,19 +82,20 @@ sub login {
 }
 
 sub get_borrower {
-    my ($username)=@_;
+    my ($username) = @_;
     my $env;
-    my $borrower = getpatroninformation($env, '',$username);
-    return($borrower);
+    my $borrower = getpatroninformation( $env, '', $username );
+    return ($borrower);
 }
 
 sub issued_items {
-    my ($username)=@_;
+    my ($username) = @_;
     my $borrower = get_borrower($username);
-#    my $issues = getissues($borrower->{'borrowernumber'});
+
+    #    my $issues = getissues($borrower->{'borrowernumber'});
     # the getissues routine in Koha is currently retarded
     # so im doing it here, until I get round to fixing circulation
-     my $select = "SELECT items.*,issues.timestamp      AS timestamp,
+    my $select = "SELECT items.*,issues.timestamp      AS timestamp,
                                   issues.date_due       AS date_due,
                                   items.barcode         AS barcode,
                                   biblio.title          AS title,
@@ -216,16 +112,17 @@ sub issued_items {
                           AND itemtypes.itemtype     = biblioitems.itemtype
                           AND issues.returndate      IS NULL
                           ORDER BY issues.date_due";
-my $dbh=C4::Context->dbh();
+    my $dbh = C4::Context->dbh();
 
-        my $sth=$dbh->prepare($select);
-my @items;
-while (my $data = $sth->fetchrow_hashref()){
-    push @items,$data;
+    my $sth = $dbh->prepare($select);
+    $sth->execute($borrower->{'borrowernumber'});
+    my @items;
+    while ( my $data = $sth->fetchrow_hashref() ) {
+        push @items, $data;
     }
-$sth->finish();
-return @items;
-        
+    $sth->finish();
+    return @items;
+
 }
 
 # Preloaded methods go here.
@@ -239,41 +136,35 @@ __END__
 
 =head1 NAME
 
-Koha::Bot - Perl extension for blah blah blah
+Koha::Bot - Perl extension for Creating a Bot for use on IM networks
 
 =head1 SYNOPSIS
 
   use Koha::Bot;
-  blah blah blah
-
+  
 =head1 DESCRIPTION
 
-Stub documentation for Koha::Bot, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
+This module can be used to create a IM bot that talks to Koha. Currently it just works
+with AIM. 
 
-Blah blah blah.
+Currently it can search a catalogue. The user can authenticate and get a list
+of books issued to themselves
 
 =head2 EXPORT
 
-None by default.
+search_catalogue
 
 
 
 =head1 SEE ALSO
 
-Mention other useful documentation such as the documentation of
-related modules or operating system documentation (such as man pages
-in UNIX), or any relevant external documentation such as RFCs or
-standards.
+koha@lists.katipo.co.nz
 
-If you have a mailing list set up for your module, mention it here.
-
-If you have a web site set up for your module, mention it here.
+www.koha.org
 
 =head1 AUTHOR
 
-Chris Cormack, E<lt>chris@E<gt>
+Chris Cormack, E<lt>chris@bigballofwax.co.nzE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
