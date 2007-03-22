@@ -1,6 +1,7 @@
 package Koha::Bot::Jabber;
 
 use 5.008008;
+use Net::Jabber qw( Client );
 use strict;
 use warnings;
 
@@ -29,6 +30,14 @@ our $VERSION = '0.01';
 
 
 # Preloaded methods go here.
+
+
+sub connect {
+    
+    my $Con = new Net::Jabber::Client();                
+    my $status = $Con->Connect(hostname=>"jabber.org"); 
+
+}
 
 1;
 __END__
