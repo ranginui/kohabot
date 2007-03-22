@@ -1,0 +1,6 @@
+Revision history for Perl extension Koha::Bot::Aim.
+
+0.01  Sun Mar 18 20:48:08 2007
+	- original version; created by h2xs 1.23 with options
+		-XAn Koha::Bot::Aim
+

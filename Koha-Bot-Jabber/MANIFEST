@@ -1,0 +1,6 @@
+Changes
+Makefile.PL
+MANIFEST
+README
+t/Koha-Bot-Jabber.t
+lib/Koha/Bot/Jabber.pm
