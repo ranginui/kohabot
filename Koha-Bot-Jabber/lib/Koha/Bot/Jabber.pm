@@ -33,7 +33,7 @@ our $VERSION = '0.01';
 
 
 sub connect {
-    
+    my ($hostname) = @_;
     my $Con = new Net::Jabber::Client();                
     my $status = $Con->Connect(hostname=>"jabber.org"); 
 
@@ -45,24 +45,20 @@ __END__
 
 =head1 NAME
 
-Koha::Bot::Jabber - Perl extension for blah blah blah
+Koha::Bot::Jabber - Perl extension for getting a Koha bot up on a Jabber network
 
 =head1 SYNOPSIS
 
   use Koha::Bot::Jabber;
-  blah blah blah
+  
 
 =head1 DESCRIPTION
 
-Stub documentation for Koha::Bot::Jabber, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
 
-Blah blah blah.
 
 =head2 EXPORT
 
-None by default.
+connect()
 
 
 
@@ -79,7 +75,7 @@ If you have a web site set up for your module, mention it here.
 
 =head1 AUTHOR
 
-Chris Cormack, E<lt>chris@E<gt>
+Chris Cormack, E<lt>chris@bigballofwax.co.nzE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
