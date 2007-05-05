@@ -13,11 +13,11 @@ use Koha::Bot;
 # set this to the path to your Koha moudules
 use lib '/nzkoha/intranet/modules/';
 
-use C4::Context;
-use C4::SearchMarc;
-use C4::Biblio;
-use C4::Auth;
-use C4::Circulation::Circ2;
+#use C4::Context;
+#use C4::SearchMarc;
+#use C4::Biblio;
+#use C4::Auth;
+#use C4::Circulation::Circ2;
 
 require Exporter;
 use AutoLoader qw(AUTOLOAD);
@@ -106,7 +106,7 @@ sub _im_in {
     }
     elsif ( $message =~ /search title (.*)/i ) {
 	# user is doing a search of the catalogue using title
-        my ( $results, $total ) = title_search( $1, 0 );
+        my ( $results, $total ) = search_catalogue( 'title', $1 );
         if ( $total > 0 ) {
             $oscar->send_im( $sender, "$total results found" );
             foreach my $result (@$results) {
@@ -121,7 +121,7 @@ sub _im_in {
     }
     elsif ( $message =~ /search author (.*)/i ) {
 	# searching by author
-        my ( $results, $total ) = author_search( $1, 0 );
+        my ( $results, $total ) = search_catalogue( 'author', $1);
         if ( $total > 0 ) {
             $oscar->send_im( $sender, "$total results found" );
             foreach my $result (@$results) {

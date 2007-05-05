@@ -5,5 +5,6 @@ use strict;
 
 my $screenname='kohabot';
 my $password='wootwoot';
+my $opac_url='hlt.dev.kohalibrary.com';
 
-run_bot($screenname,$password);
+run_bot($screenname,$password,$opac_url);

@@ -65,7 +65,7 @@ sub search_catalogue {
     my $resultsperpage = 5;
     my @and_or;
     my @excluding;
-    my @operator = ['contains'];
+    my @operator = ('contains');
     my $orderby = $type;
     my $startfrom = 0;
     my ( $results, $total ) =
