@@ -8,7 +8,8 @@ use strict;
 use warnings;
 
 # set this to the path to your Koha moudules
-use lib '/usr/local/koha/intranet/modules';
+use lib '/nzkoha/intranet/modules/';
+
 use C4::Context;
 use C4::SearchMarc;
 use C4::Biblio;
@@ -64,8 +65,9 @@ sub search_catalogue {
     my $resultsperpage = 5;
     my @and_or;
     my @excluding;
-    my $operator = 'contains';
+    my @operator = ['contains'];
     my $orderby = $type;
+    my $startfrom = 0;
     my ( $results, $total ) =
       catalogsearch( $dbh, \@tags, \@and_or, \@excluding, \@operator, \@value,
         $startfrom * $resultsperpage,
