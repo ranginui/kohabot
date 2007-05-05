@@ -11,7 +11,8 @@ use Koha::Bot;
 
 
 # set this to the path to your Koha moudules
-use lib '/usr/local/koha/intranet/modules';
+use lib '/nzkoha/intranet/modules/';
+
 use C4::Context;
 use C4::SearchMarc;
 use C4::Biblio;
@@ -44,10 +45,8 @@ our @EXPORT = qw( run_bot
 
 );
 
-our $VERSION = '0.01';
+our $VERSION = '0.03';
 
-# defining the url of the opac here, should be fetch from a config file
-# somewhere
 
 # we use this hash to match authenticated users with the IM names
 our %users;
@@ -56,8 +55,10 @@ our %users;
 # Think of it as an event loop, it doesnt do anything until it needs to service
 # an interrupt
 
+our $opac_url;
+
 sub run_bot {
-    my ( $screenname, $password ) = @_;
+    my ( $screenname, $password, $opac_url ) = @_;
     my $bot = Net::OSCAR->new();
     $bot->set_callback_im_in( \&_im_in );
     $bot->set_callback_signon_done( \&_signon );
@@ -172,7 +173,6 @@ sub _im_in {
 1;
 __END__
 
-# Below is stub documentation for your module. You'd better edit it!
 
 =head1 NAME
 
@@ -184,8 +184,9 @@ Koha::Bot - Perl extension for Creating a Bot for use on IM networks
   
   my $screenname='kohabot';
   my $password='wootwoot';
+  my $opac_url='hlt.dev.kohalibrary.com';
 
-  run_bot($screenname,$password);
+  run_bot($screenname,$password,$opac_url);
 
 =head1 DESCRIPTION
 
