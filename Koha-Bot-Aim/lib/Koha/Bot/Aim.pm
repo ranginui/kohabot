@@ -9,16 +9,6 @@ use warnings;
 use Net::OSCAR qw(:standard);
 use Koha::Bot;
 
-
-# set this to the path to your Koha moudules
-use lib '/nzkoha/intranet/modules/';
-
-#use C4::Context;
-#use C4::SearchMarc;
-#use C4::Biblio;
-#use C4::Auth;
-#use C4::Circulation::Circ2;
-
 require Exporter;
 use AutoLoader qw(AUTOLOAD);
 
@@ -58,7 +48,10 @@ our %users;
 our $opac_url;
 
 sub run_bot {
-    my ( $screenname, $password, $opac_url ) = @_;
+    my ( $screenname, $password, $url ) = @_;
+    print "url is $url";
+    $opac_url = $url;
+    print "url is $opac_url";
     my $bot = Net::OSCAR->new();
     $bot->set_callback_im_in( \&_im_in );
     $bot->set_callback_signon_done( \&_signon );
@@ -84,8 +77,10 @@ sub _signon {
 # this is called if the bot receives an instant message
 # it then parses the messsage and reacts
 sub _im_in {
-    my ( $oscar, $sender, $message, $is_away ) = @_;
+    my ( $oscar, $sender, $message, $is_away) = @_;
     print "[AWAY] " if $is_away;
+    print "url is $opac_url\n";
+    print "im logged in\n";
     $message =~ s/<(([^ >]|\n)*)>//g;
     if ( $message =~ /issued items/i ) {
         # user is try to check items on issue to them
