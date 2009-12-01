@@ -22,6 +22,6 @@ use strict;
 
 my $screenname='kohabot';
 my $password='wootwoot';
-my $opac_url='http://hlt.dev.kohalibrary.com';
+my $opac_url='http://opac.koha.workbuffer.org';
 
 run_bot($screenname,$password,$opac_url);

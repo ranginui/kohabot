@@ -3,6 +3,22 @@ package Koha::Bot::Aim;
 # Copyright 2007 Chris Cormack
 # chris@bigballofwax.co.nz
 
+# This file is part of KohaBot.                                                                                             
+#                                                                                                                           
+# KohaBot is free software; you can redistribute it and/or modify it under the                                              
+# terms of the GNU General Public License as published by the Free Software                                                 
+# Foundation; either version 3 of the License, or (at your option) any later                                                
+# version.                                                                                                                  
+#                                                                                                                           
+# Koha is distributed in the hope that it will be useful, but WITHOUT ANY                                                   
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR                                             
+# A PARTICULAR PURPOSE.  See the GNU General Public License for more details.                                               
+#                                                                                                                           
+# You should have received a copy of the GNU General Public License along with                                              
+# Koha; if not, write to the Free Software Foundation, Inc., 59 Temple Place,                                               
+# Suite 330, Boston, MA  02111-1307 USA                                                                                     
+# 
+
 use 5.008008;
 use strict;
 use warnings;
@@ -211,9 +227,20 @@ Chris Cormack, E<lt>chris@bigballofwax.co.nzE<gt>
 
 Copyright (C) 2007 by Chris Cormack
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8.8 or,
-at your option, any later version of Perl 5 you may have available.
+This file is part of KohaBot.                                                                                             
+                                                                                                                           
+KohaBot is free software; you can redistribute it and/or modify it under the                                              
+terms of the GNU General Public License as published by the Free Software                                                 
+Foundation; either version 3 of the License, or (at your option) any later                                                
+version.                                                                                                                  
+                                                                                                                           
+KohaBot is distributed in the hope that it will be useful, but WITHOUT ANY                                                 
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR                                             
+A PARTICULAR PURPOSE.  See the GNU General Public License for more details.                                               
+                                                                                                                           
+You should have received a copy of the GNU General Public License along with                                              
+KohaBot; if not, write to the Free Software Foundation, Inc., 59 Temple Place,                                           
+Suite 330, Boston, MA  02111-1307 USA                                                                                     
 
 
 =cut
