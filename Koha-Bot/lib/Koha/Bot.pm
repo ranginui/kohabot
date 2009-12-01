@@ -4,17 +4,10 @@ package Koha::Bot;
 # chris@bigballofwax.co.nz
 
 use 5.008008;
+use XML::Simple;
+use LWP::Simple;
 use strict;
 use warnings;
-
-# set this to the path to your Koha moudules
-use lib '/nzkoha/intranet/modules/';
-
-use C4::Context;
-use C4::SearchMarc;
-use C4::Biblio;
-use C4::Auth;
-use C4::Circulation::Circ2;
 
 require Exporter;
 use AutoLoader qw(AUTOLOAD);
@@ -49,80 +42,35 @@ our $VERSION = '0.03';
 
 sub search_catalogue {
     my ( $type, $term ) = @_;
-    my $dbh = C4::Context->dbh();
-    if ($type eq 'title'){
-	$type = 'biblio.title';
-    }
-    elsif ($type eq 'author'){
-	$type = 'biblio.author';
-    }
-    my ( $tag, $subfield ) =
-      MARCfind_marc_from_kohafield( $dbh, $type, '' );    
-    my @tags;
-    my @value;
-    push @value, $term;
-    my $desc_or_asc    = 'ASC';
-    my $resultsperpage = 5;
-    my @and_or;
-    my @excluding;
-    my @operator = ('contains');
-    my $orderby = $type;
-    my $startfrom = 0;
-    my ( $results, $total ) =
-      catalogsearch( $dbh, \@tags, \@and_or, \@excluding, \@operator, \@value,
-        $startfrom * $resultsperpage,
-        $resultsperpage, $orderby, $desc_or_asc );
+    my $results;
+    my $total;
     return ( $results, $total );
 }
 
-# Checks the usernamae and password against the database
+# Checks the username and password against the koha site
 sub login {
-    my ( $username, $password ) = @_;
-    my $dbh = C4::Context->dbh;
-    my $checked = C4::Auth::checkpw( $dbh, $username, $password );
-    return $checked;
+    my ( $username, $password, $opacurl ) = @_;
+    my $url = $opacurl."/cgi-bin/koha/ilsdi.pl?service=AuthenticatePatron&username=".$username."&password=".$password;
+    my $result = get($url);
+    return unless defined $result;
+    my $user = XMLin($result);
+    if ($user->{AuthenticatePatron}->{id}){
+	return $user->{AuthenticatePatron}->{id};
+    }
+    else {
+	return;
+    }
 }
 
 sub get_borrower {
     my ($username) = @_;
-    my $env;
-    my $borrower = getpatroninformation( $env, '', $username );
+    my $borrower;    
     return ($borrower);
 }
 
 sub issued_items {
     my ($username) = @_;
-    my $borrower = get_borrower($username);
-
-    #    my $issues = getissues($borrower->{'borrowernumber'});
-    # the getissues routine in Koha is currently retarded
-    # so im doing it here, until I get round to fixing circulation
-    my $select = "SELECT items.*,issues.timestamp      AS timestamp,
-                                  issues.date_due       AS date_due,
-                                  items.barcode         AS barcode,
-                                  biblio.title          AS title,
-                                  biblio.author         AS author,
-                                  biblioitems.dewey     AS dewey,
-                                  itemtypes.description AS itemtype,
-                                  biblioitems.subclass  AS subclass,
-                                  biblioitems.classification AS classification
-                          FROM issues,items,biblioitems,biblio, itemtypes
-                          WHERE issues.borrowernumber  = ?
-                          AND issues.itemnumber      = items.itemnumber
-                          AND items.biblionumber     = biblio.biblionumber
-                          AND items.biblioitemnumber = biblioitems.biblioitemnumber
-                          AND itemtypes.itemtype     = biblioitems.itemtype
-                          AND issues.returndate      IS NULL
-                          ORDER BY issues.date_due";
-    my $dbh = C4::Context->dbh();
-
-    my $sth = $dbh->prepare($select);
-    $sth->execute($borrower->{'borrowernumber'});
     my @items;
-    while ( my $data = $sth->fetchrow_hashref() ) {
-        push @items, $data;
-    }
-    $sth->finish();
     return @items;
 
 }
@@ -172,9 +120,19 @@ Chris Cormack, E<lt>chris@bigballofwax.co.nzE<gt>
 
 Copyright (C) 2007 by Chris Cormack
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8.8 or,
-at your option, any later version of Perl 5 you may have available.
+This file is part of KohaBot.                                                                                             
+                                                                                                                           
+KohaBot is free software; you can redistribute it and/or modify it under the                                              
+terms of the GNU General Public License as published by the Free Software                                                 
+Foundation; either version 3 of the License, or (at your option) any later                                                
+version.                                                                                                                  
+                                                                                                                           
+KohaBot is distributed in the hope that it will be useful, but WITHOUT ANY                                                  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR                                             
+A PARTICULAR PURPOSE.  See the GNU General Public License for more details.                                               
+                                                                                                                           
+You should have received a copy of the GNU General Public License along with                                              
+KohaBot; if not, write to the Free Software Foundation, Inc., 59 Temple Place,                                    
+Suite 330, Boston, MA  02111-1307 USA                                                                                     
 
 
 =cut
