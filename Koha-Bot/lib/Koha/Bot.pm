@@ -41,7 +41,7 @@ our $VERSION = '0.03';
 # module to search the catalogue
 
 sub search_catalogue {
-    my ( $type, $term ) = @_;
+    my ( $type, $term, $opacurl ) = @_;
     my $results;
     my $total;
     return ( $results, $total );
@@ -51,11 +51,14 @@ sub search_catalogue {
 sub login {
     my ( $username, $password, $opacurl ) = @_;
     my $url = $opacurl."/cgi-bin/koha/ilsdi.pl?service=AuthenticatePatron&username=".$username."&password=".$password;
+    warn $url;
     my $result = get($url);
     return unless defined $result;
     my $user = XMLin($result);
-    if ($user->{AuthenticatePatron}->{id}){
-	return $user->{AuthenticatePatron}->{id};
+    use Data::Dumper;
+    warn Dumper $user;
+    if ($user->{id}){
+	return $user->{id};
     }
     else {
 	return;
@@ -70,6 +73,7 @@ sub get_borrower {
 
 sub issued_items {
     my ($username) = @_;
+    
     my @items;
     return @items;
 
