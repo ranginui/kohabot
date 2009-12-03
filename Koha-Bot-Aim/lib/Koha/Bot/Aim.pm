@@ -102,11 +102,16 @@ sub _im_in {
         # user is try to check items on issue to them
         if ( $users{$sender} ) {
             # if the have authenticated, give them the info
-            my @issued_items = issued_items( $users{$sender}, $opac_url );
-            foreach my $item (@issued_items) {
-		warn $item;
-#                $oscar->send_im( $sender, "$item->{'title'} / $item->{'author'} : $item->{'date_due'}" );
+            my $issued_items = issued_items( $users{$sender}, $opac_url );
+	    if ($issued_items){
+#	    use Data::Dumper;
+#	    warn Dumper $issued_items;
+            foreach my $item (@$issued_items) {
+#		warn Dumper $item;
+#		warn "issued item" . $item;
+                $oscar->send_im( $sender, "$item->{'title'} / $item->{'author'} : $item->{'date_due'}" );
             }
+		}
         }
         else {
 
