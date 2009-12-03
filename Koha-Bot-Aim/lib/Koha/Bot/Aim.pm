@@ -102,9 +102,10 @@ sub _im_in {
         # user is try to check items on issue to them
         if ( $users{$sender} ) {
             # if the have authenticated, give them the info
-            my @issued_items = issued_items( $users{$sender} );
+            my @issued_items = issued_items( $users{$sender}, $opac_url );
             foreach my $item (@issued_items) {
-                $oscar->send_im( $sender, "$item->{'title'} / $item->{'author'} : $item->{'date_due'}" );
+		warn $item;
+#                $oscar->send_im( $sender, "$item->{'title'} / $item->{'author'} : $item->{'date_due'}" );
             }
         }
         else {
@@ -155,19 +156,10 @@ sub _im_in {
 	    # 2 if they logged in with the superuser login and password
 	    
 	    # add them to the hash
-            $users{$sender} = $1;
+            $users{$sender} = $result;
 	    # get borrower information
-            my $borrower = get_borrower($1);
-            if ( $result == 2 ) {
-		# if they are superuser 
-		# we will have to do something more here
-                $oscar->send_im( $sender,
-                    "Welcome $1, you now have superuser privs" );
-            }
-            else {
-                $oscar->send_im( $sender, "Welcome $borrower->{'firstname'}, you are now logged in" );
-            }
-
+            my $borrower = get_borrower($result,$opac_url);
+	    $oscar->send_im( $sender, "Welcome $borrower->{'firstname'}, you are now logged in" );
         }
         else {
             $oscar->send_im( $sender,

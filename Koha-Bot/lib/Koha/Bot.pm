@@ -51,12 +51,9 @@ sub search_catalogue {
 sub login {
     my ( $username, $password, $opacurl ) = @_;
     my $url = $opacurl."/cgi-bin/koha/ilsdi.pl?service=AuthenticatePatron&username=".$username."&password=".$password;
-    warn $url;
     my $result = get($url);
     return unless defined $result;
     my $user = XMLin($result);
-    use Data::Dumper;
-    warn Dumper $user;
     if ($user->{id}){
 	return $user->{id};
     }
@@ -66,17 +63,22 @@ sub login {
 }
 
 sub get_borrower {
-    my ($username) = @_;
-    my $borrower;    
-    return ($borrower);
+    my ($id, $opacurl) = @_;
+    my $url = $opacurl."/cgi-bin/koha/ilsdi.pl?service=GetPatronInfo&patron_id=$id";
+    warn $url;
+    my $result = get($url);
+    return unless defined $result;
+    my $user = XMLin($result);
+    return ($user);
 }
 
 sub issued_items {
-    my ($username) = @_;
-    
-    my @items;
-    return @items;
-
+    my ($id, $opacurl) = @_;
+    my $url = $opacurl."/cgi-bin/koha/ilsdi.pl?service=GetPatronInfo&patron_id=$id&show_loans=1";
+    my $result = get($url);
+    return unless defined $result;
+    my $user = XMLin($result);
+    return $user->{loans}->{loan};
 }
 
 # Preloaded methods go here.
