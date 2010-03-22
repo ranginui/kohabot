@@ -17,7 +17,7 @@ package Koha::Bot::Aim;
 # You should have received a copy of the GNU General Public License along with
 # KohaBot; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
 # Suite 330, Boston, MA  02111-1307 USA
-# 
+#
 
 use 5.008008;
 use strict;
@@ -53,7 +53,6 @@ our @EXPORT = qw( run_bot
 
 our $VERSION = '0.03';
 
-
 # we use this hash to match authenticated users with the IM names
 our %users;
 
@@ -73,6 +72,7 @@ sub run_bot {
     $bot->set_callback_signon_done( \&_signon );
     $bot->set_callback_error( \&_got_error );
     $bot->signon( $screenname, $password );
+
     while (1) {
         $bot->do_one_loop();
     }
@@ -84,8 +84,7 @@ sub _got_error {
     print "cant connect $connection, $error, $description $fatal\n";
 }
 
-
-# called if the bot connects succesfully 
+# called if the bot connects succesfully
 sub _signon {
     print "All signed in\n";
 }
@@ -93,25 +92,25 @@ sub _signon {
 # this is called if the bot receives an instant message
 # it then parses the messsage and reacts
 sub _im_in {
-    my ( $oscar, $sender, $message, $is_away) = @_;
+    my ( $oscar, $sender, $message, $is_away ) = @_;
     print "[AWAY] " if $is_away;
     print "url is $opac_url\n";
     print "im logged in\n";
     $message =~ s/<(([^ >]|\n)*)>//g;
     if ( $message =~ /issued items/i ) {
+
         # user is try to check items on issue to them
         if ( $users{$sender} ) {
+
             # if the have authenticated, give them the info
             my $issued_items = issued_items( $users{$sender}, $opac_url );
-	    if ($issued_items){
-#	    use Data::Dumper;
-#	    warn Dumper $issued_items;
-            foreach my $item (@$issued_items) {
-#		warn Dumper $item;
-#		warn "issued item" . $item;
-                $oscar->send_im( $sender, "$item->{'title'} / $item->{'author'} : $item->{'date_due'}" );
+            if ($issued_items) {
+                foreach my $item (@$issued_items) {
+                    $oscar->send_im( $sender,
+"$item->{'title'} / $item->{'author'} : $item->{'date_due'}"
+                    );
+                }
             }
-		}
         }
         else {
 
@@ -122,7 +121,8 @@ sub _im_in {
         }
     }
     elsif ( $message =~ /search title (.*)/i ) {
-	# user is doing a search of the catalogue using title
+
+        # user is doing a search of the catalogue using title
         my ( $results, $total ) = search_catalogue( 'title', $1 );
         if ( $total > 0 ) {
             $oscar->send_im( $sender, "$total results found" );
@@ -137,8 +137,9 @@ sub _im_in {
         }
     }
     elsif ( $message =~ /search author (.*)/i ) {
-	# searching by author
-        my ( $results, $total ) = search_catalogue( 'author', $1);
+
+        # searching by author
+        my ( $results, $total ) = search_catalogue( 'author', $1 );
         if ( $total > 0 ) {
             $oscar->send_im( $sender, "$total results found" );
             foreach my $result (@$results) {
@@ -152,19 +153,23 @@ sub _im_in {
         }
     }
     elsif ( $message =~ /login (.*)\:(.*)/ ) {
-	# user authenticating
-	# login username:password
-	warn "opac url is $opac_url";
-        my $result = login( $1, $2 ,$opac_url);
+
+        # user authenticating
+        # login username:password
+        warn "opac url is $opac_url";
+        my $result = login( $1, $2, $opac_url );
         if ($result) {
-	    # if they successfully logged in $result will be 1 for normal user
-	    # 2 if they logged in with the superuser login and password
-	    
-	    # add them to the hash
+
+            # if they successfully logged in $result will be 1 for normal user
+            # 2 if they logged in with the superuser login and password
+
+            # add them to the hash
             $users{$sender} = $result;
-	    # get borrower information
-            my $borrower = get_borrower($result,$opac_url);
-	    $oscar->send_im( $sender, "Welcome $borrower->{'firstname'}, you are now logged in" );
+
+            # get borrower information
+            my $borrower = get_borrower( $result, $opac_url );
+            $oscar->send_im( $sender,
+                "Welcome $borrower->{'firstname'}, you are now logged in" );
         }
         else {
             $oscar->send_im( $sender,
@@ -174,14 +179,12 @@ sub _im_in {
 
 }
 
-
 # Preloaded methods go here.
 
 # Autoload methods go after =cut, and are processed by the autosplit program.
 
 1;
 __END__
-
 
 =head1 NAME
 

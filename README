@@ -1,9 +1,8 @@
- 
-This is a script and module for creating a bot for use on aim to
+ This is a script and module for creating a bot for use on aim to
 interact with Koha.
 Currently it only supports the OSCAR protocol as used by AIM.
 
-You need to edit kohabot.pl to use the username and password you
+You need to edit kohabotaim.pl to use the username and password you
 registered with AIM.
 
 TODO
